@@ -5,4 +5,6 @@ tmp/
 # IDE projects
 .idea/
 .vscode/
+.venv
+client
 
