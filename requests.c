@@ -59,7 +59,7 @@ char *compute_get_request(char *host, char *url, char *query_params,
 }
 
 char *compute_post_request(char *host, char *url, char* content_type, char **body_data,
-                            int body_data_fields_count, char **cookies, int cookies_count)
+                            int body_data_fields_count, char **cookies, int cookies_count, char *token)
 {
     int i, len;
     char *message = calloc(BUFLEN, sizeof(char));
@@ -101,6 +101,11 @@ char *compute_post_request(char *host, char *url, char* content_type, char **bod
         }
 
         sprintf(line, "%s%s", line, cookies[cookies_count - 1]);
+        compute_message(message, line);
+    }
+
+    if(token != NULL){
+        sprintf(line, "Authorization: Bearer %s", token);
         compute_message(message, line);
     }
 
