@@ -89,16 +89,16 @@ char *receive_from_server(int sockfd)
         }
 
         buffer_add(&buffer, response, (size_t) bytes);
-        
+
         header_end = buffer_find(&buffer, HEADER_TERMINATOR, HEADER_TERMINATOR_SIZE);
 
         if (header_end >= 0) {
             header_end += HEADER_TERMINATOR_SIZE;
-            
+
             int content_length_start = buffer_find_insensitive(&buffer, CONTENT_LENGTH, CONTENT_LENGTH_SIZE);
-            
+
             if (content_length_start < 0) {
-                continue;           
+                continue;
             }
 
             content_length_start += CONTENT_LENGTH_SIZE;
@@ -107,7 +107,7 @@ char *receive_from_server(int sockfd)
         }
     } while (1);
     size_t total = content_length + (size_t) header_end;
-    
+
     while (buffer.size < total) {
         int bytes = read(sockfd, response, BUFLEN);
 
@@ -128,4 +128,31 @@ char *receive_from_server(int sockfd)
 char *basic_extract_json_response(char *str)
 {
     return strstr(str, "{\"");
+}
+
+
+
+
+// this function is used to print debug messages
+// very helpfull and considering not deleting it
+void debug(char *message, int value) {
+
+	FILE *f = fopen("debug.txt", "a");
+
+	if (message != NULL) {
+		// fprintf(f, "%s", message);
+
+    // maybe message has not \0 at the final
+    for (int i = 0; i < strlen(message); i++) {
+      fprintf(f, "%c", message[i]);
+    }
+
+	}
+
+	if (value != -1) {
+		fprintf(f, "%d", value);
+	}
+
+	fprintf(f, "\n");
+	fclose(f);
 }

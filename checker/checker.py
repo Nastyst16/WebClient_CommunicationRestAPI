@@ -15,8 +15,8 @@ import textwrap
 
 import pexpect
 
-TEST_USERNAME = "test"
-TEST_PASSWORD = "test123"
+TEST_USERNAME = "5ddfdfddf646"
+TEST_PASSWORD = "test"
 EXPECT_TIMEOUT = 1  # 1 second should be enough...
 TEXT_INDENT = "    "
 
@@ -94,7 +94,7 @@ def expect_print_output(p):
         text = p.before or "<no output>"
         if p.before:
             p.expect(r'.+')
-            
+
     color_print(wrap_test_output(text.strip()), **color_args)
 
 def extract_book_ids(output):
@@ -131,7 +131,7 @@ def do_get_books(p, xargs):
     expect_count = xargs.get("expect_count", False)
     if type(expect_count) is int:
         if len(xargs["book_ids"]) != expect_count:
-            raise CheckerException("Book count mismatch: %s != %s" % 
+            raise CheckerException("Book count mismatch: %s != %s" %
                                    (len(xargs["book_ids"]), expect_count))
         color_print(wrap_test_output("OKAY: count=%i" % expect_count), fg="green", style="bold")
 
@@ -166,7 +166,7 @@ def do_get_book_id(p, xargs):
             if len(values) != 1:
                 raise CheckerException("Multiple '%s' fields found in output: %s!" % (field, values))
             if str(values[0]) != str(expect_book[field]):
-                raise CheckerException("Book field '%s' mismatch: %s != %s" % 
+                raise CheckerException("Book field '%s' mismatch: %s != %s" %
                                        (field, values[0], expect_book[field]))
         color_print(wrap_test_output("OKAY: fields match!"), fg="green", style="bold")
 
@@ -261,7 +261,7 @@ SCRIPTS = {
         ("get_books", {"expect_count": 2}),
         ("get_book_id", {"book_idx": 0, "expect_book": {"title": "Computer Networks", "page_count": 950}}),
         ("delete_book", {"book_idx": 1}),
-        ("logout", {}), ("exit", {}), 
+        ("logout", {}), ("exit", {}),
     ],
     "nospace": [
         ("register", {}),  # use CLI-provided user
@@ -272,7 +272,7 @@ SCRIPTS = {
         ("get_books", {"expect_count": 2}),
         ("get_book_id", {"book_idx": 0, "expect_book": {"title": "ComputerNetworks", "page_count": 950}}),
         ("delete_book", {"book_idx": 1}),
-        ("logout", {}), ("exit", {}), 
+        ("logout", {}), ("exit", {}),
     ],
     "add3": [
         ("register", {}),
@@ -285,45 +285,45 @@ SCRIPTS = {
         ("get_book_id", {"book_idx": 2, "expect_book": _book_test_fields(2)}),
         ("get_book_id", {"book_idx": 0, "expect_book": _book_test_fields(0)}),
         ("get_book_id", {"book_idx": 1, "expect_book": _book_test_fields(1)}),
-        ("logout", {}), ("exit", {}), 
+        ("logout", {}), ("exit", {}),
     ],
     "read3": [
         ("login", {}), ("enter_library", {}),
         ("get_books", {"expect_count": 3}),
         ("get_book_id", {"book_idx": 1, "expect_book": SAMPLE_BOOKS[1]}),
-        ("logout", {}), ("exit", {}), 
+        ("logout", {}), ("exit", {}),
     ],
     "delete_all": [
         ("login", {}), ("enter_library", {}),
         ("get_books", {}), ("delete_all_books", {"delete_books_ignore": True}),
         ("get_books", {"expect_count": 0}),
-        ("logout", {}), ("exit", {}), 
+        ("logout", {}), ("exit", {}),
     ],
 
     # interactive shell
     "SHELL": [
         ("register", {}), ("login", {}), ("enter_library", {}),
         ("shell", {}),
-        ("logout", {}), ("exit", {}), 
+        ("logout", {}), ("exit", {}),
     ],
 
     # for the following ones, errors should be reported by the user program
     "invalid_user": [
         ("register", {"user": "hahah don't create this:test123"}),
         ("login", {}), ("enter_library", {}),
-        ("logout", {}), ("exit", {}), 
+        ("logout", {}), ("exit", {}),
     ],
     "invalid_book_fields": [
         ("register", {}),
         ("login", {}), ("enter_library", {}),
         ("add_book", {"book": {"title": "Something Invalid"}}),
-        ("logout", {}), ("exit", {}), 
+        ("logout", {}), ("exit", {}),
     ],
     "invalid_book_pages": [
         ("register", {}),
         ("login", {}), ("enter_library", {}),
         ("add_book", {"book": dict(SAMPLE_BOOKS[0], page_count="nope")}),
-        ("logout", {}), ("exit", {}), 
+        ("logout", {}), ("exit", {}),
     ],
 }
 
@@ -365,7 +365,7 @@ def run_tasks(p, args):
                 color_print(wrap_test_output(traceback.format_exc()), fg="red", stderr=True)
             if not ignore:
                 break
-    
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='checker.py',
