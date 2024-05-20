@@ -89,6 +89,8 @@ int parse_command(char *argv[])
     } else if (strcmp(command, "exit") == 0) {
         return EXIT;
     } else {
+        debug("Invalid command:  ", -1);
+        debug(command, -1);
         return -1;
     }
 }
@@ -168,6 +170,7 @@ void login_command(t_client *client)
 
     // searching for the ERROR string in the response
     if (!verify_error(client)) {
+
         printf("Success, user: %s logged in.\n", client->data0);
     } else {
         return;
@@ -366,6 +369,74 @@ void add_book_command(t_client *client) {
     }
 }
 
+void delete_book_command(t_client *client) {
+
+    printf("id=");
+    char *id = (char *) malloc(11);
+    memset(id, 0, 11);
+    scanf("%s", id);
+
+    int sockfd = client->sockfd;
+
+    if (strlen(client->tokens) == 0) {
+        printf("You must be logged in to delete a book.\n");
+        return;
+    }
+
+    char path[BUFLEN];
+    memset(path, 0, BUFLEN);
+    strcpy(path, "/api/v1/tema/library/books/");
+    strcat(path, id);
+
+
+    // create the message
+    client->request = compute_delete_request(HOST, path, NULL, NULL, 0, client->tokens);
+
+    send_to_server(sockfd, client->request);
+
+    strcpy(client->response, receive_from_server(sockfd));
+
+    if (!verify_error(client)) {
+
+        ////////////// mai trebuie sa pui mesaj de erroare daca id ul nu este valid
+        printf("Success, user: %s deleted the book with id: %s.\n", client->data0, id);
+        free(id);
+
+
+    } else {
+        free(id);
+        return;
+    }
+}
+
+void logout_command(t_client *client) {
+    
+        int sockfd = client->sockfd;
+    
+        if (strlen(client->tokens) == 0) {
+            printf("You must be logged in to logout.\n");
+            return;
+        }
+    
+        char *data[] = {client->cookies};
+        client->request = compute_get_request(HOST, "/api/v1/tema/auth/logout", NULL, data, 1, NULL);
+    
+        send_to_server(sockfd, client->request);
+    
+        strcpy(client->response, receive_from_server(sockfd));
+    
+        // searching for the ERROR string in the response
+        if (!verify_error(client)) {
+            printf("Success, user: %s logged out.\n", client->data0);
+        } else {
+            return;
+        }
+    
+        // reset the cookies
+        memset(client->cookies, 0, BUFLEN);
+        memset(client->tokens, 0, BUFLEN);
+}
+
 
 
 
@@ -384,8 +455,6 @@ int main(int argc, char *argv[])
         }
 
         int command = parse_command(argv);
-
-        // checkpoint debug
 
         switch(command) {
             case REGISTER:
@@ -418,17 +487,18 @@ int main(int argc, char *argv[])
                 break;
 
             case DELETE_BOOK:
+                delete_book_command(&client);
 
                 break;
 
             case LOGOUT:
+                logout_command(&client);
 
                 break;
 
             case EXIT:
-
-
-                break;
+                close_connection(client.sockfd);
+                return 0;
 
             default:
                 printf("Invalid command.\n");
