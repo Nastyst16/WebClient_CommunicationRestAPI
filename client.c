@@ -163,6 +163,7 @@ void login_command(t_client *client)
     }
 
 
+    client->tokens[0] = '\0';
 
     // no error. save the cookie
     char *cookie = strstr(client->response, "Set-Cookie: ");
@@ -218,8 +219,13 @@ void get_books_command(t_client *client) {
 
     int sockfd = client->sockfd;
 
-    if (strlen(client->tokens) == 0) {
+    if (strlen(client->cookies) == 0) {
         printf("You must be logged in to get the books.\n");
+        return;
+    }
+
+    if (strlen(client->tokens) == 0) {
+        printf("You must enter the library to get the books.\n");
         return;
     }
 
@@ -238,7 +244,17 @@ void get_books_command(t_client *client) {
         char *json_start = strstr(client->response, "[");
 
         JSON_Value *root_value = json_parse_string(json_start);
-        printf("%s", json_serialize_to_string_pretty(root_value));
+
+        char to_print[BUFLEN];
+        memset(to_print, 0, BUFLEN);
+        strcpy(to_print, json_serialize_to_string_pretty(root_value));
+
+        if (strlen(to_print) == 2) {
+            printf("No books in the library.\n");
+            return;
+        }
+
+        printf("%s\n", to_print);
 
     } else {
         return;
@@ -248,17 +264,21 @@ void get_books_command(t_client *client) {
 
 void get_book_command(t_client *client) {
 
+    if (strlen(client->cookies) == 0) {
+        printf("You must be logged in to get a book.\n");
+        return;
+    }
+    if (strlen(client->tokens) == 0) {
+        printf("You must enter the library to get a book.\n");
+        return;
+    }
+
     printf("id=");
     char *id = (char *) malloc(11);
     memset(id, 0, 11);
     scanf("%s", id);
 
     int sockfd = client->sockfd;
-
-    if (strlen(client->tokens) == 0) {
-        printf("You must be logged in to get a book.\n");
-        return;
-    }
 
     char path[BUFLEN];
     memset(path, 0, BUFLEN);
@@ -279,7 +299,7 @@ void get_book_command(t_client *client) {
         char *json_start = strstr(client->response, "{");
 
         JSON_Value *root_value = json_parse_string(json_start);
-        printf("%s", json_serialize_to_string_pretty(root_value));
+        printf("%s\n", json_serialize_to_string_pretty(root_value));
 
     } else {
         return;
@@ -293,8 +313,12 @@ void add_book_command(t_client *client) {
 
     int sockfd = client->sockfd;
 
-    if (strlen(client->tokens) == 0) {
+    if (strlen(client->cookies) == 0) {
         printf("You must be logged in to add a book.\n");
+        return;
+    }
+    if (strlen(client->tokens) == 0) {
+        printf("You must enter the library to add a book.\n");
         return;
     }
 
@@ -377,17 +401,21 @@ void add_book_command(t_client *client) {
 
 void delete_book_command(t_client *client) {
 
+    if (strlen(client->cookies) == 0) {
+        printf("You must be logged in to delete a book.\n");
+        return;
+    }
+    if (strlen(client->tokens) == 0) {
+        printf("You must enter the library to delete a book.\n");
+        return;
+    }
+
     printf("id=");
     char *id = (char *) malloc(11);
     memset(id, 0, 11);
     scanf("%s", id);
 
     int sockfd = client->sockfd;
-
-    if (strlen(client->tokens) == 0) {
-        printf("You must be logged in to delete a book.\n");
-        return;
-    }
 
     char path[BUFLEN];
     memset(path, 0, BUFLEN);
@@ -420,7 +448,7 @@ void logout_command(t_client *client) {
 
         int sockfd = client->sockfd;
 
-        if (strlen(client->tokens) == 0) {
+        if (strlen(client->cookies) == 0) {
             printf("You must be logged in to logout.\n");
             return;
         }
