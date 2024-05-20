@@ -28,7 +28,6 @@
 
 typedef struct {
     int sockfd;
-
     char username[BUFLEN];
     char message[BUFLEN];
     char response[BUFLEN];
@@ -59,7 +58,8 @@ int verify_error(t_client *client) {
 int parse_command(char *argv[])
 {
     char command[BUFMAX];
-    scanf("%s", command);
+    fgets(command, BUFMAX, stdin);
+    command[strlen(command) - 1] = '\0';
 
     if (strcmp(command, "register") == 0) {
         return REGISTER;
@@ -80,8 +80,9 @@ int parse_command(char *argv[])
     } else if (strcmp(command, "exit") == 0) {
         return EXIT;
     } else {
-        debug("Invalid command:  ", -1);
+        debug("Invalid command: ", -1);
         debug(command, -1);
+        debug("\n", -1);
         return -1;
     }
 }
@@ -93,12 +94,20 @@ void register_command(t_client client)
 
     printf("username=");
     memset(client.username, 0, BUFLEN);
-    scanf("%s", client.username);
+    fgets(client.username, BUFLEN, stdin);
+    client.username[strlen(client.username) - 1] = '\0';
 
     char secret_password[BUFLEN];
     printf("password=");
     memset(secret_password, 0, BUFLEN);
-    scanf("%s", secret_password);
+    fgets(secret_password, BUFLEN, stdin);
+    secret_password[strlen(secret_password) - 1] = '\0';
+
+    // check for whitespaces
+    if (strchr(client.username, ' ') != NULL || strchr(secret_password, ' ') != NULL) {
+        printf("Username and password must not contain whitespaces.\n");
+        return;
+    }
 
     // create the message
     JSON_Value *root_value = json_value_init_object();
@@ -122,8 +131,8 @@ void register_command(t_client client)
     } else {
         return;
     }
-
 }
+
 
 void login_command(t_client *client)
 {
@@ -131,12 +140,20 @@ void login_command(t_client *client)
 
     printf("username=");
     memset(client->username, 0, BUFLEN);
-    scanf("%s", client->username);
+    fgets(client->username, BUFLEN, stdin);
+    client->username[strlen(client->username) - 1] = '\0';
 
     char secret_password[BUFLEN];
     printf("password=");
     memset(secret_password, 0, BUFLEN);
-    scanf("%s", secret_password);
+    fgets(secret_password, BUFLEN, stdin);
+    secret_password[strlen(secret_password) - 1] = '\0';
+
+    // check for whitespaces
+    if (strchr(client->username, ' ') != NULL || strchr(secret_password, ' ') != NULL) {
+        printf("Username and password must not contain whitespaces.\n");
+        return;
+    }
 
     // create the message
     JSON_Value *root_value = json_value_init_object();
@@ -161,7 +178,6 @@ void login_command(t_client *client)
     } else {
         return;
     }
-
 
     client->tokens[0] = '\0';
 
@@ -191,7 +207,7 @@ void enter_library_command(t_client *client) {
     }
 
     char *data[] = {client->cookies};
-    client->request = compute_get_request(HOST, "/api/v1/tema/library/access", NULL, data, 1, NULL);
+    client->request = compute_get_delete_request(HOST, "/api/v1/tema/library/access", NULL, data, 1, NULL, 0);
 
     send_to_server(sockfd, client->request);
 
@@ -203,7 +219,6 @@ void enter_library_command(t_client *client) {
     } else {
         return;
     }
-
 
     // saving the token
     char *token = strstr(client->response, "token");
@@ -230,13 +245,11 @@ void get_books_command(t_client *client) {
     }
 
     // create the message
-    client->request = compute_get_request(HOST, "/api/v1/tema/library/books", NULL, NULL, 0, client->tokens);
+    client->request = compute_get_delete_request(HOST, "/api/v1/tema/library/books", NULL, NULL, 0, client->tokens, 0);
 
     send_to_server(sockfd, client->request);
 
     strcpy(client->response, receive_from_server(sockfd));
-
-    debug(client->response, -1);
 
     // searching for the ERROR string in the response
     if (!verify_error(client)) {
@@ -277,6 +290,7 @@ void get_book_command(t_client *client) {
     char *id = (char *) malloc(11);
     memset(id, 0, 11);
     scanf("%s", id);
+    getchar();
 
     int sockfd = client->sockfd;
 
@@ -287,7 +301,7 @@ void get_book_command(t_client *client) {
 
 
     // create the message
-    client->request = compute_get_request(HOST, path, NULL, NULL, 0, client->tokens);
+    client->request = compute_get_delete_request(HOST, path, NULL, NULL, 0, client->tokens, 0);
 
     send_to_server(sockfd, client->request);
 
@@ -327,7 +341,6 @@ void add_book_command(t_client *client) {
     JSON_Object *root_object = json_value_get_object(root_value);
 
     char title[BUFLEN], author[BUFLEN], genre[BUFLEN], publisher[BUFLEN], page_count[BUFLEN];
-    fgets(title, BUFLEN, stdin);
 
     printf("title=");
     memset(title, 0, BUFLEN);
@@ -414,6 +427,7 @@ void delete_book_command(t_client *client) {
     char *id = (char *) malloc(11);
     memset(id, 0, 11);
     scanf("%s", id);
+    getchar();
 
     int sockfd = client->sockfd;
 
@@ -424,7 +438,7 @@ void delete_book_command(t_client *client) {
 
 
     // create the message
-    client->request = compute_delete_request(HOST, path, NULL, NULL, 0, client->tokens);
+    client->request = compute_get_delete_request(HOST, path, NULL, NULL, 0, client->tokens, 1);
 
     send_to_server(sockfd, client->request);
 
@@ -439,37 +453,36 @@ void delete_book_command(t_client *client) {
         printf("Success, user: %s deleted the book with id: %d.\n", client->username, book_id);
 
     } else {
-        debug("Error in delete_book_command", -1);
         return;
     }
 }
 
 void logout_command(t_client *client) {
 
-        int sockfd = client->sockfd;
+    int sockfd = client->sockfd;
 
-        if (strlen(client->cookies) == 0) {
-            printf("You must be logged in to logout.\n");
-            return;
-        }
+    if (strlen(client->cookies) == 0) {
+        printf("You must be logged in to logout.\n");
+        return;
+    }
 
-        char *data[] = {client->cookies};
-        client->request = compute_get_request(HOST, "/api/v1/tema/auth/logout", NULL, data, 1, NULL);
+    char *data[] = {client->cookies};
+    client->request = compute_get_delete_request(HOST, "/api/v1/tema/auth/logout", NULL, data, 1, NULL, 0);
 
-        send_to_server(sockfd, client->request);
+    send_to_server(sockfd, client->request);
 
-        strcpy(client->response, receive_from_server(sockfd));
+    strcpy(client->response, receive_from_server(sockfd));
 
-        // searching for the ERROR string in the response
-        if (!verify_error(client)) {
-            printf("Success, user: %s logged out.\n", client->username);
-        } else {
-            return;
-        }
+    // searching for the ERROR string in the response
+    if (!verify_error(client)) {
+        printf("Success, user: %s logged out.\n", client->username);
+    } else {
+        return;
+    }
 
-        // reset the cookies
-        memset(client->cookies, 0, BUFLEN);
-        memset(client->tokens, 0, BUFLEN);
+    // reset the cookies
+    memset(client->cookies, 0, BUFLEN);
+    memset(client->tokens, 0, BUFLEN);
 }
 
 
