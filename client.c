@@ -87,7 +87,7 @@ int parse_command(char *argv[])
 }
 
 
-void register_command(t_client client) // done
+void register_command(t_client client)
 {
     int sockfd = client.sockfd;
 
@@ -302,94 +302,61 @@ void add_book_command(t_client *client) {
     JSON_Value *root_value = json_value_init_object();
     JSON_Object *root_object = json_value_get_object(root_value);
 
-    char book[BUFLEN];
-    fgets(book, BUFLEN, stdin);
+    char title[BUFLEN], author[BUFLEN], genre[BUFLEN], publisher[BUFLEN], page_count[BUFLEN];
+    fgets(title, BUFLEN, stdin);
 
     printf("title=");
-    memset(book, 0, BUFLEN);
-    fgets(book, BUFLEN, stdin);
-
-    // if the title is empty, return
-    if (strlen(book) == 0) {
-        printf("The title cannot be empty.\n");
-        return;
-    }
-
+    memset(title, 0, BUFLEN);
+    fgets(title, BUFLEN, stdin);
     // remove the newline character
-    book[strlen(book) - 1] = '\0';
-
-    json_object_set_string(root_object, "title", book);
-
+    title[strlen(title) - 1] = '\0';
+    json_object_set_string(root_object, "title", title);
 
     printf("author=");
-    memset(book, 0, BUFLEN);
-    fgets(book, BUFLEN, stdin);
-
-    // if the author is empty, return
-    if (strlen(book) == 0) {
-        printf("The author cannot be empty.\n");
-        return;
-    }
-
+    memset(author, 0, BUFLEN);
+    fgets(author, BUFLEN, stdin);
     // remove the newline character
-    book[strlen(book) - 1] = '\0';
-
-    json_object_set_string(root_object, "author", book);
+    author[strlen(author) - 1] = '\0';
+    json_object_set_string(root_object, "author", author);
 
     printf("genre=");
-    memset(book, 0, BUFLEN);
-    fgets(book, BUFLEN, stdin);
-
-    // if the genre is empty, return
-    if (strlen(book) == 0) {
-        printf("The genre cannot be empty.\n");
-        return;
-    }
-
+    memset(genre, 0, BUFLEN);
+    fgets(genre, BUFLEN, stdin);
     // remove the newline character
-    book[strlen(book) - 1] = '\0';
+    genre[strlen(genre) - 1] = '\0';
+    json_object_set_string(root_object, "genre", genre);
 
-    json_object_set_string(root_object, "genre", book);
 
     printf("publisher=");
-    memset(book, 0, BUFLEN);
-    fgets(book, BUFLEN, stdin);
-
-    // if the publisher is empty, return
-    if (strlen(book) == 0) {
-        printf("The publisher cannot be empty.\n");
-        return;
-    }
-
+    memset(publisher, 0, BUFLEN);
+    fgets(publisher, BUFLEN, stdin);
     // remove the newline character
-    book[strlen(book) - 1] = '\0';
-
-    json_object_set_string(root_object, "publisher", book);
+    publisher[strlen(publisher) - 1] = '\0';
+    json_object_set_string(root_object, "publisher", publisher);
 
     printf("page_count=");
-    memset(book, 0, BUFLEN);
-    fgets(book, BUFLEN, stdin);
-
-    // if the page_count is empty, return
-    if (strlen(book) == 0) {
-        printf("The page_count cannot be empty.\n");
-        return;
-    }
-
+    memset(page_count, 0, BUFLEN);
+    fgets(page_count, BUFLEN, stdin);
     // remove the newline character
-    book[strlen(book) - 1] = '\0';
+    page_count[strlen(page_count) - 1] = '\0';
 
     // verify if the page_count is a number
-    for (int i = 0; i < strlen(book); i++) {
-        if (book[i] < '0' || book[i] > '9') {
+    for (int i = 0; i < strlen(page_count); i++) {
+        if (page_count[i] < '0' || page_count[i] > '9') {
             printf("Incorrect data type for page_count. It must be a number.\n");
             return;
         }
     }
+    json_object_set_number(root_object, "page_count", atoi(page_count));
 
-    debug("aici", -1);
 
-    json_object_set_number(root_object, "page_count", atoi(book));
+    // verify if all the inputs are correct
+    if (strlen(title) == 0 || strlen(author) == 0 || strlen(genre) == 0 || strlen(publisher) == 0 || strlen(page_count) == 0) {
+        printf("At least one of the inputs is empty. Cannot add the book.\n");
+        return;
+    }
+
+
     strcpy(client->message, json_serialize_to_string_pretty(root_value));
 
     char *data[] = {client->message};
