@@ -244,20 +244,10 @@ void get_books_command(t_client *client) {
     // searching for the ERROR string in the response
     if (!verify_error(client)) {
 
-        JSON_Value *root_value = json_parse_string(client->response);
-        JSON_Array *books = json_value_get_array(root_value);
+        char *json_start = strstr(client->response, "[");
 
-        for (int i = 0; i < json_array_get_count(books); i++) {
-            JSON_Object *book = json_array_get_object(books, i);
-
-            printf("title: %s\n", json_object_get_string(book, "title"));
-            printf("author: %s\n", json_object_get_string(book, "author"));
-            printf("genre: %s\n", json_object_get_string(book, "genre"));
-            printf("publisher: %s\n", json_object_get_string(book, "publisher"));
-            printf("page_count: %d\n", (int)json_object_get_number(book, "page_count"));
-            printf("\n");
-        }
-
+        JSON_Value *root_value = json_parse_string(json_start);
+        printf("%s", json_serialize_to_string_pretty(root_value));
 
     } else {
         return;
@@ -312,8 +302,11 @@ void add_book_command(t_client *client) {
     fgets(book, BUFLEN, stdin);
     json_object_set_number(root_object, "page_count", atoi(book));
 
+    // debug(client->message, -1);
 
     strcpy(client->message, json_serialize_to_string_pretty(root_value));
+
+    // debug(client->message, -1);
 
     char *data[] = {client->message};
     client->request = compute_post_request(HOST, "/api/v1/tema/library/books", "application/json",
