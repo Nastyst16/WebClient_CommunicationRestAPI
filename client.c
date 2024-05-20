@@ -255,20 +255,55 @@ void get_books_command(t_client *client) {
 }
 
 
+void get_book_command(t_client *client) {
+
+    printf("id=");
+    char *id = (char *) malloc(11);
+    memset(id, 0, 11);
+    scanf("%s", id);
+
+    int sockfd = client->sockfd;
+
+    if (strlen(client->tokens) == 0) {
+        printf("You must be logged in to get a book.\n");
+        return;
+    }
+
+    char path[BUFLEN];
+    memset(path, 0, BUFLEN);
+    strcpy(path, "/api/v1/tema/library/books/");
+    strcat(path, id);
+
+
+    // create the message
+    client->request = compute_get_request(HOST, path, NULL, NULL, 0, client->tokens);
+
+    send_to_server(sockfd, client->request);
+
+    strcpy(client->response, receive_from_server(sockfd));
+
+    if (!verify_error(client)) {
+        char *json_start = strstr(client->response, "{");
+
+        JSON_Value *root_value = json_parse_string(json_start);
+        printf("%s", json_serialize_to_string_pretty(root_value));
+
+    } else {
+        return;
+    }
+}
+
+
+
+
 void add_book_command(t_client *client) {
 
     int sockfd = client->sockfd;
 
     if (strlen(client->tokens) == 0) {
-        printf("You must be logged in to enter the library.\n");
+        printf("You must be logged in to add a book.\n");
         return;
     }
-    // verify if token exists
-    if (strlen(client->tokens) == 0) {
-        printf("You must be logged in to enter the library.\n");
-        return;
-    }
-
 
     // create the message
     JSON_Value *root_value = json_value_init_object();
@@ -280,33 +315,39 @@ void add_book_command(t_client *client) {
     printf("title=");
     memset(book, 0, BUFLEN);
     fgets(book, BUFLEN, stdin);
+    // remove the newline character
+    book[strlen(book) - 1] = '\0';
     json_object_set_string(root_object, "title", book);
 
     printf("author=");
     memset(book, 0, BUFLEN);
     fgets(book, BUFLEN, stdin);
+    // remove the newline character
+    book[strlen(book) - 1] = '\0';
     json_object_set_string(root_object, "author", book);
 
     printf("genre=");
     memset(book, 0, BUFLEN);
     fgets(book, BUFLEN, stdin);
+    // remove the newline character
+    book[strlen(book) - 1] = '\0';
     json_object_set_string(root_object, "genre", book);
 
     printf("publisher=");
     memset(book, 0, BUFLEN);
     fgets(book, BUFLEN, stdin);
+    // remove the newline character
+    book[strlen(book) - 1] = '\0';
     json_object_set_string(root_object, "publisher", book);
 
     printf("page_count=");
     memset(book, 0, BUFLEN);
     fgets(book, BUFLEN, stdin);
+    // remove the newline character
+    book[strlen(book) - 1] = '\0';
     json_object_set_number(root_object, "page_count", atoi(book));
 
-    // debug(client->message, -1);
-
     strcpy(client->message, json_serialize_to_string_pretty(root_value));
-
-    // debug(client->message, -1);
 
     char *data[] = {client->message};
     client->request = compute_post_request(HOST, "/api/v1/tema/library/books", "application/json",
@@ -367,6 +408,7 @@ int main(int argc, char *argv[])
                 break;
 
             case GET_BOOK:
+                get_book_command(&client);
 
                 break;
 
