@@ -1,5 +1,3 @@
-#pragma once
-
 #include <stdio.h>      /* printf, sprintf */
 #include <stdlib.h>     /* exit, atoi, malloc, free */
 #include <unistd.h>     /* read, write, close */
@@ -16,10 +14,6 @@
 #define SERVER_PORT 8080
 #define HOST "34.246.184.49:8080"
 #define BUFMAX 256
-// #define SERVER_API "/api/v1/dummy"
-// #define OPENWEATHER_API "api.openweathermap.org"
-// #define OPENWEATHER_PORT 80
-
 
 #define REGISTER 1
 #define LOGIN 2
@@ -35,10 +29,7 @@
 typedef struct {
     int sockfd;
 
-    char data0[BUFLEN];
-    char data1[BUFLEN];
-    char login[BUFLEN];
-    char logout[BUFLEN];
+    char username[BUFLEN];
     char message[BUFLEN];
     char response[BUFLEN];
     char cookies[BUFLEN];
@@ -101,19 +92,20 @@ void register_command(t_client client) // done
     int sockfd = client.sockfd;
 
     printf("username=");
-    memset(client.data0, 0, BUFLEN);
-    scanf("%s", client.data0);
+    memset(client.username, 0, BUFLEN);
+    scanf("%s", client.username);
 
+    char secret_password[BUFLEN];
     printf("password=");
-    memset(client.data1, 0, BUFLEN);
-    scanf("%s", client.data1);
+    memset(secret_password, 0, BUFLEN);
+    scanf("%s", secret_password);
 
     // create the message
     JSON_Value *root_value = json_value_init_object();
     JSON_Object *root_object = json_value_get_object(root_value);
 
-    json_object_set_string(root_object, "username", client.data0);
-    json_object_set_string(root_object, "password", client.data1);
+    json_object_set_string(root_object, "username", client.username);
+    json_object_set_string(root_object, "password", secret_password);
 
     strcpy(client.message, json_serialize_to_string_pretty(root_value));
 
@@ -125,18 +117,11 @@ void register_command(t_client client) // done
     strcpy(client.response, receive_from_server(sockfd));
 
     // searching for the ERROR string in the response
-    if (strstr(client.response, "error") != NULL) {
-
-        char *error = strstr(client.response, "error");
-        error += 8;
-        error[strlen(error) - 2] = '\0'; // remove the last "}
-
-        printf("%s\n", error);
-
+    if (!verify_error(&client)) {
+        printf("Success, user: %s registered.\n", client.username);
     } else {
-        printf("Success, user: %s registered.\n", client.data0);
+        return;
     }
-
 
 }
 
@@ -145,19 +130,20 @@ void login_command(t_client *client)
     int sockfd = client->sockfd;
 
     printf("username=");
-    memset(client->data0, 0, BUFLEN);
-    scanf("%s", client->data0);
+    memset(client->username, 0, BUFLEN);
+    scanf("%s", client->username);
 
+    char secret_password[BUFLEN];
     printf("password=");
-    memset(client->data1, 0, BUFLEN);
-    scanf("%s", client->data1);
+    memset(secret_password, 0, BUFLEN);
+    scanf("%s", secret_password);
 
     // create the message
     JSON_Value *root_value = json_value_init_object();
     JSON_Object *root_object = json_value_get_object(root_value);
 
-    json_object_set_string(root_object, "username", client->data0);
-    json_object_set_string(root_object, "password", client->data1);
+    json_object_set_string(root_object, "username", client->username);
+    json_object_set_string(root_object, "password", secret_password);
 
     strcpy(client->message, json_serialize_to_string_pretty(root_value));
 
@@ -171,7 +157,7 @@ void login_command(t_client *client)
     // searching for the ERROR string in the response
     if (!verify_error(client)) {
 
-        printf("Success, user: %s logged in.\n", client->data0);
+        printf("Success, user: %s logged in.\n", client->username);
     } else {
         return;
     }
@@ -212,7 +198,7 @@ void enter_library_command(t_client *client) {
 
     // searching for the ERROR string in the response
     if (!verify_error(client)) {
-        printf("Success, user: %s entered the library.\n", client->data0);
+        printf("Success, user: %s entered the library.\n", client->username);
     } else {
         return;
     }
@@ -233,7 +219,7 @@ void get_books_command(t_client *client) {
     int sockfd = client->sockfd;
 
     if (strlen(client->tokens) == 0) {
-        printf("You must be logged in to enter the library.\n");
+        printf("You must be logged in to get the books.\n");
         return;
     }
 
@@ -243,6 +229,8 @@ void get_books_command(t_client *client) {
     send_to_server(sockfd, client->request);
 
     strcpy(client->response, receive_from_server(sockfd));
+
+    debug(client->response, -1);
 
     // searching for the ERROR string in the response
     if (!verify_error(client)) {
@@ -285,6 +273,8 @@ void get_book_command(t_client *client) {
 
     strcpy(client->response, receive_from_server(sockfd));
 
+    free(id);
+
     if (!verify_error(client)) {
         char *json_start = strstr(client->response, "{");
 
@@ -318,38 +308,88 @@ void add_book_command(t_client *client) {
     printf("title=");
     memset(book, 0, BUFLEN);
     fgets(book, BUFLEN, stdin);
+
+    // if the title is empty, return
+    if (strlen(book) == 0) {
+        printf("The title cannot be empty.\n");
+        return;
+    }
+
     // remove the newline character
     book[strlen(book) - 1] = '\0';
+
     json_object_set_string(root_object, "title", book);
+
 
     printf("author=");
     memset(book, 0, BUFLEN);
     fgets(book, BUFLEN, stdin);
+
+    // if the author is empty, return
+    if (strlen(book) == 0) {
+        printf("The author cannot be empty.\n");
+        return;
+    }
+
     // remove the newline character
     book[strlen(book) - 1] = '\0';
+
     json_object_set_string(root_object, "author", book);
 
     printf("genre=");
     memset(book, 0, BUFLEN);
     fgets(book, BUFLEN, stdin);
+
+    // if the genre is empty, return
+    if (strlen(book) == 0) {
+        printf("The genre cannot be empty.\n");
+        return;
+    }
+
     // remove the newline character
     book[strlen(book) - 1] = '\0';
+
     json_object_set_string(root_object, "genre", book);
 
     printf("publisher=");
     memset(book, 0, BUFLEN);
     fgets(book, BUFLEN, stdin);
+
+    // if the publisher is empty, return
+    if (strlen(book) == 0) {
+        printf("The publisher cannot be empty.\n");
+        return;
+    }
+
     // remove the newline character
     book[strlen(book) - 1] = '\0';
+
     json_object_set_string(root_object, "publisher", book);
 
     printf("page_count=");
     memset(book, 0, BUFLEN);
     fgets(book, BUFLEN, stdin);
+
+    // if the page_count is empty, return
+    if (strlen(book) == 0) {
+        printf("The page_count cannot be empty.\n");
+        return;
+    }
+
     // remove the newline character
     book[strlen(book) - 1] = '\0';
-    json_object_set_number(root_object, "page_count", atoi(book));
 
+    // verify if the page_count is a number
+    for (int i = 0; i < strlen(book); i++) {
+        if (book[i] < '0' || book[i] > '9') {
+            printf("Incorrect data type for page_count. It must be a number.\n");
+            return;
+        }
+    }
+
+    debug("aici", -1);
+
+    json_object_set_number(root_object, "page_count", atoi(book));
     strcpy(client->message, json_serialize_to_string_pretty(root_value));
 
     char *data[] = {client->message};
@@ -362,9 +402,8 @@ void add_book_command(t_client *client) {
 
     // searching for the ERROR string in the response
     if (!verify_error(client)) {
-        printf("Success, user: %s added a book.\n", client->data0);
+        printf("Success, user: %s added a book.\n", client->username);
     } else {
-        printf("%s", client->response);
         return;
     }
 }
@@ -396,42 +435,43 @@ void delete_book_command(t_client *client) {
 
     strcpy(client->response, receive_from_server(sockfd));
 
+    int book_id = atoi(id);
+    free(id);
+
     if (!verify_error(client)) {
 
         ////////////// mai trebuie sa pui mesaj de erroare daca id ul nu este valid
-        printf("Success, user: %s deleted the book with id: %s.\n", client->data0, id);
-        free(id);
-
+        printf("Success, user: %s deleted the book with id: %d.\n", client->username, book_id);
 
     } else {
-        free(id);
+        debug("Error in delete_book_command", -1);
         return;
     }
 }
 
 void logout_command(t_client *client) {
-    
+
         int sockfd = client->sockfd;
-    
+
         if (strlen(client->tokens) == 0) {
             printf("You must be logged in to logout.\n");
             return;
         }
-    
+
         char *data[] = {client->cookies};
         client->request = compute_get_request(HOST, "/api/v1/tema/auth/logout", NULL, data, 1, NULL);
-    
+
         send_to_server(sockfd, client->request);
-    
+
         strcpy(client->response, receive_from_server(sockfd));
-    
+
         // searching for the ERROR string in the response
         if (!verify_error(client)) {
-            printf("Success, user: %s logged out.\n", client->data0);
+            printf("Success, user: %s logged out.\n", client->username);
         } else {
             return;
         }
-    
+
         // reset the cookies
         memset(client->cookies, 0, BUFLEN);
         memset(client->tokens, 0, BUFLEN);
@@ -448,10 +488,8 @@ int main(int argc, char *argv[])
 
         client.sockfd = open_connection(SERVER_IP, SERVER_PORT, AF_INET, SOCK_STREAM, 0);
         if(client.sockfd < 0){
-            error("Socket not available. It has other missions to accomplish.");
-        }
-        if (argc > 1) {
-            printf("Invalid command.\n");
+            printf("Serverul nu este disponibil.\n");
+            return 0;
         }
 
         int command = parse_command(argv);
@@ -463,37 +501,30 @@ int main(int argc, char *argv[])
 
             case LOGIN:
                 login_command(&client);
-
                 break;
 
             case ENTER_LIBRARY:
                 enter_library_command(&client);
-
                 break;
 
             case GET_BOOKS:
                 get_books_command(&client);
-
                 break;
 
             case GET_BOOK:
                 get_book_command(&client);
-
                 break;
 
             case ADD_BOOK:
                 add_book_command(&client);
-
                 break;
 
             case DELETE_BOOK:
                 delete_book_command(&client);
-
                 break;
 
             case LOGOUT:
                 logout_command(&client);
-
                 break;
 
             case EXIT:
@@ -503,20 +534,13 @@ int main(int argc, char *argv[])
             default:
                 printf("Invalid command.\n");
                 break;
-
-
-
         }
 
         close_connection(client.sockfd);
     }
 
-
-
     // free the allocated data at the end!
     close_connection(client.sockfd);
-    // free(client.message);
-    // free(response);
 
     return 0;
 }
